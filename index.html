@@ -1,219 +1,193 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <meta name="theme-color" content="#111111">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Шарики">
+  <link rel="manifest" href="./manifest.json">
+  <link rel="apple-touch-icon" href="./icon-192.png">
   <title>Лопай шарики</title>
-  <meta name="theme-color" content="#111" />
-  <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <meta name="apple-mobile-web-app-title" content="Лопай шарики" />
-
-  <!-- Манифест PWA -->
-  <link rel="manifest" href="manifest.json" />
-
   <style>
-    :root {
-      --bg: #111;
-      --text: #eee;
-    }
-    body {
-      margin: 0;
-      padding: 0;
-      background: var(--bg);
-      color: var(--text);
-      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-      overflow: hidden;
-      touch-action: none;
-    }
-
-    #ui-layer {
-      position: absolute;
-      top: 10px;
-      left: 10px;
-      right: 10px;
-      display: flex;
-      justify-content: space-between;
-      pointer-events: none;
-      z-index: 5;
-    }
-
-    .score {
-      font-size: 24px;
-      font-weight: bold;
-      text-shadow: 0 2px 4px rgba(0,0,0,.8);
-    }
-
-    #game-area {
-      width: 100vw;
-      height: 100vh;
-    }
-
-    .ball {
-      position: absolute;
-      border-radius: 50%;
-      cursor: pointer;
-      box-shadow: 0 4px 6px rgba(0,0,0,0.3);
-      user-select: none;
-      transition: transform 0.1s ease, opacity 0.2s;
-    }
-
-    .ball:active {
-      transform: scale(0.95);
-    }
-
-    .explosion {
-      animation: pop 0.3s forwards;
-      opacity: 0;
-    }
-
-    @keyframes pop {
-      0% { transform: scale(1); opacity: 1; }
-      100% { transform: scale(2); opacity: 0; }
-    }
-
-    /* Экран старта */
-    #start-screen {
-      position: absolute;
-      top: 0; left: 0; right: 0; bottom: 0;
-      background: rgba(0,0,0,0.85);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      z-index: 10;
-      pointer-events: auto;
-    }
-    h1 { margin: 0 0 10px 0; font-size: 32px; }
-    p { margin: 0 0 20px 0; color: #ccc; }
-    #start-btn {
-      padding: 16px 32px;
-      font-size: 20px;
-      background: #ff4757;
-      color: white;
-      border: none;
-      border-radius: 8px;
-      cursor: pointer;
-      box-shadow: 0 4px 12px rgba(255,71,87,0.4);
-    }
-    #start-btn:hover { background: #ff6b7a; }
+    :root { --bg:#111; --text:#eee; }
+    * { box-sizing:border-box; }
+    html,body { margin:0; width:100%; height:100%; overflow:hidden; }
+    body { background:var(--bg); color:var(--text); font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif; touch-action:none; }
+    #game-area { position:fixed; inset:0; overflow:hidden; }
+    #ui-layer { position:fixed; top:0; left:0; right:0; z-index:5; display:flex; align-items:center; justify-content:space-between; gap:12px; padding:calc(12px + env(safe-area-inset-top)) calc(14px + env(safe-area-inset-right)) 12px calc(14px + env(safe-area-inset-left)); pointer-events:none; }
+    .score { font-size:clamp(18px,5vw,24px); font-weight:700; text-shadow:0 2px 4px #000; white-space:nowrap; }
+    #life-panel { text-align:right; }
+    #hearts { display:flex; justify-content:flex-end; gap:5px; font-size:clamp(22px,6vw,30px); line-height:1; filter:drop-shadow(0 2px 3px #000); }
+    .heart.lost { filter:grayscale(1); opacity:.25; }
+    #misses { margin-top:5px; font-size:12px; color:#ddd; text-shadow:0 1px 3px #000; }
+    .ball { position:absolute; border-radius:50%; cursor:pointer; box-shadow:inset -6px -8px 12px #0003, inset 5px 6px 10px #fff5, 0 4px 8px #0005; user-select:none; -webkit-tap-highlight-color:transparent; touch-action:manipulation; will-change:bottom; }
+    .ball:active { filter:brightness(1.12); }
+    .mine { position:absolute; cursor:crosshair; touch-action:manipulation; -webkit-tap-highlight-color:transparent; filter:drop-shadow(0 3px 5px #000a); }
+    .mine::before { content:""; position:absolute; inset:0; background:linear-gradient(140deg,#858b9b,#272b39 55%,#090b13); clip-path:polygon(50% 0%,58% 22%,72% 7%,74% 29%,95% 22%,82% 42%,100% 50%,82% 58%,95% 78%,74% 71%,72% 93%,58% 78%,50% 100%,42% 78%,28% 93%,26% 71%,5% 78%,18% 58%,0% 50%,18% 42%,5% 22%,26% 29%,28% 7%,42% 22%); }
+    .mine::after { content:"✕"; position:absolute; inset:23%; border-radius:50%; display:grid; place-items:center; font-weight:900; font-size:clamp(13px,4vw,23px); color:#ff5966; background:radial-gradient(circle at 30% 25%,#747a88,#242735 65%,#0c0e16); border:2px solid #9da3ad; box-shadow:inset -3px -4px 5px #0008; }
+    .mine-hit { animation:mineFlash .24s ease-out forwards; pointer-events:none; }
+    @keyframes mineFlash { to { transform:scale(1.5); opacity:0; } }
+    .explosion { pointer-events:none; animation:pop .3s ease-out forwards; }
+    @keyframes pop { from { transform:scale(1); opacity:1; } to { transform:scale(2); opacity:0; } }
+    #overlay { position:fixed; inset:0; z-index:10; display:flex; flex-direction:column; justify-content:center; align-items:center; text-align:center; background:#000d; padding:24px; }
+    #overlay[hidden] { display:none; }
+    h1 { margin:0 0 12px; font-size:clamp(28px,8vw,38px); }
+    p { margin:0 0 22px; color:#ddd; line-height:1.5; }
+    #start-btn { padding:16px 32px; border:0; border-radius:12px; background:#ff4757; color:white; font-size:20px; font-weight:700; cursor:pointer; box-shadow:0 4px 12px #ff475766; }
+    #start-btn:hover { background:#ff6473; }
   </style>
 </head>
 <body>
+  <div id="game-area" aria-label="Игровое поле"></div>
   <div id="ui-layer">
     <div class="score">Счёт: <span id="score-val">0</span></div>
+    <div id="life-panel">
+      <div id="hearts" aria-label="Жизни: 3 из 3"><span class="heart">❤️</span><span class="heart">❤️</span><span class="heart">❤️</span></div>
+      <div id="misses">Пропущено: <span id="miss-val">0</span>/3</div>
+    </div>
   </div>
-
-  <div id="game-area"></div>
-
-  <div id="start-screen">
-    <h1>Лопай шарики!</h1>
-    <p>Кликай по шарикам, чтобы лопать их</p>
-    <button id="start-btn">Начать игру</button>
+  <div id="overlay">
+    <h1 id="overlay-title">Лопай шарики!</h1>
+    <p id="overlay-text">Нажимай на шарики, чтобы лопать их.<br>Каждые 3 пропущенных шарика отнимают ❤️.<br>Всего 3 жизни.<br>Не нажимай на мины с шипами — они отнимают жизнь!</p>
+    <button id="start-btn" type="button">Начать игру</button>
   </div>
-
   <script>
+    'use strict';
     const gameArea = document.getElementById('game-area');
     const scoreEl = document.getElementById('score-val');
-    const startScreen = document.getElementById('start-screen');
+    const missEl = document.getElementById('miss-val');
+    const heartsEl = document.getElementById('hearts');
+    const heartEls = [...heartsEl.querySelectorAll('.heart')];
+    const overlay = document.getElementById('overlay');
+    const overlayTitle = document.getElementById('overlay-title');
+    const overlayText = document.getElementById('overlay-text');
     const startBtn = document.getElementById('start-btn');
+    const balls = new Set();
+    let score = 0, lives = 3, misses = 0, running = false;
+    let spawnInterval = null, animationId = null, previousFrame = null;
 
-    let score = 0;
-    let gameRunning = false;
-    let spawnInterval;
-    const balls = [];
-
-    function random(min, max) {
-      return Math.random() * (max - min) + min;
-    }
-
-    function createBall() {
-      const size = Math.floor(random(30, 70));
-      const x = random(size, window.innerWidth - size);
-      const y = window.innerHeight + size;
-
-      const colors = ['#ff4757', '#2ed573', '#1e90ff', '#ffa502', '#c7a6ff'];
-      const color = colors[Math.floor(Math.random() * colors.length)];
-
-      const ball = document.createElement('div');
-      ball.className = 'ball';
-      ball.style.width = size + 'px';
-      ball.style.height = size + 'px';
-      ball.style.left = x + 'px';
-      ball.style.bottom = '-' + (y - window.innerHeight) + 'px';
-      ball.style.backgroundColor = color;
-
-      const speed = random(1.5, 3.5);
-      let currentY = -size;
-
-      const tick = () => {
-        if (!gameRunning) return;
-        currentY += speed;
-        ball.style.bottom = currentY + 'px';
-
-        if (currentY > window.innerHeight + 50) {
-          removeBall(ball);
-          return;
-        }
-        requestAnimationFrame(tick);
-      };
-
-      ball.addEventListener('click', () => popBall(ball));
-      gameArea.appendChild(ball);
-      balls.push(ball);
-
-      tick();
-    }
-
-    function popBall(ball) {
-      if (!ball || !ball.parentElement) return;
-
-      score += 10;
-      scoreEl.textContent = score;
-
-      const clone = ball.cloneNode();
-      clone.classList.remove('ball');
-      clone.classList.add('explosion');
-      clone.style.transform = 'scale(1)';
-      clone.style.opacity = '1';
-      gameArea.appendChild(clone);
-
-      setTimeout(() => clone.remove(), 300);
-
-      removeBall(ball);
+    function updateUI() {
+      scoreEl.textContent = String(score);
+      missEl.textContent = String(misses);
+      heartsEl.setAttribute('aria-label', `Жизни: ${lives} из 3`);
+      heartEls.forEach((heart, index) => heart.classList.toggle('lost', index >= lives));
     }
 
     function removeBall(ball) {
-      if (ball && ball.parentElement) {
-        ball.remove();
-        const idx = balls.indexOf(ball);
-        if (idx >= 0) balls.splice(idx, 1);
+      balls.delete(ball);
+      ball.el.remove();
+    }
+
+    function endGame() {
+      running = false;
+      clearInterval(spawnInterval);
+      spawnInterval = null;
+      cancelAnimationFrame(animationId);
+      animationId = null;
+      previousFrame = null;
+      balls.forEach(ball => ball.el.remove());
+      balls.clear();
+      overlayTitle.textContent = 'Игра окончена!';
+      overlayText.textContent = `Твой счёт: ${score}. Все 3 жизни закончились.`;
+      startBtn.textContent = 'Играть снова';
+      overlay.hidden = false;
+    }
+
+    function registerMiss() {
+      misses++;
+      if (misses >= 3) {
+        misses = 0;
+        lives--;
       }
+      updateUI();
+      if (lives <= 0) endGame();
+    }
+
+    function hitMine(mine) {
+      if (!running || !balls.has(mine)) return;
+      const flash = mine.el.cloneNode(false);
+      flash.classList.add('mine-hit');
+      gameArea.appendChild(flash);
+      setTimeout(() => flash.remove(), 300);
+      removeBall(mine);
+      lives--;
+      updateUI();
+      if (lives <= 0) endGame();
+    }
+
+    function popBall(ball) {
+      if (!running || !balls.has(ball)) return;
+      score += 10;
+      updateUI();
+      const clone = ball.el.cloneNode(false);
+      clone.classList.add('explosion');
+      clone.style.pointerEvents = 'none';
+      gameArea.appendChild(clone);
+      clone.addEventListener('animationend', () => clone.remove(), { once:true });
+      setTimeout(() => clone.remove(), 400);
+      removeBall(ball);
+    }
+
+    function createBall() {
+      if (!running) return;
+      const size = 30 + Math.random() * 40;
+      const width = gameArea.clientWidth;
+      const x = Math.random() * Math.max(0, width - size);
+      const colors = ['#ff4757','#2ed573','#1e90ff','#ffa502','#c7a6ff'];
+      const el = document.createElement('div');
+      const isMine = Math.random() < 0.18;
+      el.className = isMine ? 'mine' : 'ball';
+      el.style.width = `${size}px`;
+      el.style.height = `${size}px`;
+      el.style.left = `${x}px`;
+      el.style.bottom = `${-size}px`;
+      if (!isMine) el.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+      const ball = { el, size, y:-size, speed:90 + Math.random() * 120, isMine };
+      el.addEventListener('pointerdown', event => { event.preventDefault(); if (isMine) hitMine(ball); else popBall(ball); }, { passive:false });
+      gameArea.appendChild(el);
+      balls.add(ball);
+    }
+
+    function animate(timestamp) {
+      if (!running) return;
+      const dt = previousFrame === null ? 0 : Math.min((timestamp - previousFrame) / 1000, .05);
+      previousFrame = timestamp;
+      const height = gameArea.clientHeight;
+      for (const ball of [...balls]) {
+        ball.y += ball.speed * dt;
+        ball.el.style.bottom = `${ball.y}px`;
+        if (ball.y >= height) {
+          removeBall(ball);
+          if (!ball.isMine) registerMiss();
+          if (!running) return;
+        }
+      }
+      animationId = requestAnimationFrame(animate);
     }
 
     function startGame() {
-      startScreen.style.display = 'none';
-      gameRunning = true;
-      score = 0;
-      scoreEl.textContent = score;
-      balls.length = 0;
-
-      const oldBalls = gameArea.querySelectorAll('.ball');
-      oldBalls.forEach(b => b.remove());
-
-      spawnInterval = setInterval(() => {
-        if (gameRunning) createBall();
-      }, 600);
+      if (running) return;
+      clearInterval(spawnInterval);
+      cancelAnimationFrame(animationId);
+      balls.forEach(ball => ball.el.remove());
+      balls.clear();
+      gameArea.querySelectorAll('.explosion, .mine-hit').forEach(el => el.remove());
+      score = 0; lives = 3; misses = 0;
+      updateUI();
+      overlay.hidden = true;
+      running = true;
+      previousFrame = null;
+      createBall();
+      spawnInterval = setInterval(createBall, 600);
+      animationId = requestAnimationFrame(animate);
     }
 
     startBtn.addEventListener('click', startGame);
-
-    // Регистрация Service Worker
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sw.js')
-          .then(reg => console.log('SW registered:', reg.scope))
-          .catch(err => console.error('SW registration failed:', err));
+        navigator.serviceWorker.register('./sw.js').catch(error => console.warn('Service Worker:', error));
       });
     }
   </script>
