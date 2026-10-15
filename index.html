@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <title>Лопай шарики</title>
+  <meta name="theme-color" content="#111" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Лопай шарики" />
+
+  <!-- Манифест PWA -->
+  <link rel="manifest" href="manifest.json" />
+
+  <style>
+    :root {
+      --bg: #111;
+      --text: #eee;
+    }
+    body {
+      margin: 0;
+      padding: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      overflow: hidden;
+      touch-action: none;
+    }
+
+    #ui-layer {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      right: 10px;
+      display: flex;
+      justify-content: space-between;
+      pointer-events: none;
+      z-index: 5;
+    }
+
+    .score {
+      font-size: 24px;
+      font-weight: bold;
+      text-shadow: 0 2px 4px rgba(0,0,0,.8);
+    }
+
+    #game-area {
+      width: 100vw;
+      height: 100vh;
+    }
+
+    .ball {
+      position: absolute;
+      border-radius: 50%;
+      cursor: pointer;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+      user-select: none;
+      transition: transform 0.1s ease, opacity 0.2s;
+    }
+
+    .ball:active {
+      transform: scale(0.95);
+    }
+
+    .explosion {
+      animation: pop 0.3s forwards;
+      opacity: 0;
+    }
+
+    @keyframes pop {
+      0% { transform: scale(1); opacity: 1; }
+      100% { transform: scale(2); opacity: 0; }
+    }
+
+    /* Экран старта */
+    #start-screen {
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.85);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 10;
+      pointer-events: auto;
+    }
+    h1 { margin: 0 0 10px 0; font-size: 32px; }
+    p { margin: 0 0 20px 0; color: #ccc; }
+    #start-btn {
+      padding: 16px 32px;
+      font-size: 20px;
+      background: #ff4757;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(255,71,87,0.4);
+    }
+    #start-btn:hover { background: #ff6b7a; }
+  </style>
+</head>
+<body>
+  <div id="ui-layer">
+    <div class="score">Счёт: <span id="score-val">0</span></div>
+  </div>
+
+  <div id="game-area"></div>
+
+  <div id="start-screen">
+    <h1>Лопай шарики!</h1>
+    <p>Кликай по шарикам, чтобы лопать их</p>
+    <button id="start-btn">Начать игру</button>
+  </div>
+
+  <script>
+    const gameArea = document.getElementById('game-area');
+    const scoreEl = document.getElementById('score-val');
+    const startScreen = document.getElementById('start-screen');
+    const startBtn = document.getElementById('start-btn');
+
+    let score = 0;
+    let gameRunning = false;
+    let spawnInterval;
+    const balls = [];
+
+    function random(min, max) {
+      return Math.random() * (max - min) + min;
+    }
+
+    function createBall() {
+      const size = Math.floor(random(30, 70));
+      const x = random(size, window.innerWidth - size);
+      const y = window.innerHeight + size;
+
+      const colors = ['#ff4757', '#2ed573', '#1e90ff', '#ffa502', '#c7a6ff'];
+      const color = colors[Math.floor(Math.random() * colors.length)];
+
+      const ball = document.createElement('div');
+      ball.className = 'ball';
+      ball.style.width = size + 'px';
+      ball.style.height = size + 'px';
+      ball.style.left = x + 'px';
+      ball.style.bottom = '-' + (y - window.innerHeight) + 'px';
+      ball.style.backgroundColor = color;
+
+      const speed = random(1.5, 3.5);
+      let currentY = -size;
+
+      const tick = () => {
+        if (!gameRunning) return;
+        currentY += speed;
+        ball.style.bottom = currentY + 'px';
+
+        if (currentY > window.innerHeight + 50) {
+          removeBall(ball);
+          return;
+        }
+        requestAnimationFrame(tick);
+      };
+
+      ball.addEventListener('click', () => popBall(ball));
+      gameArea.appendChild(ball);
+      balls.push(ball);
+
+      tick();
+    }
+
+    function popBall(ball) {
+      if (!ball || !ball.parentElement) return;
+
+      score += 10;
+      scoreEl.textContent = score;
+
+      const clone = ball.cloneNode();
+      clone.classList.remove('ball');
+      clone.classList.add('explosion');
+      clone.style.transform = 'scale(1)';
+      clone.style.opacity = '1';
+      gameArea.appendChild(clone);
+
+      setTimeout(() => clone.remove(), 300);
+
+      removeBall(ball);
+    }
+
+    function removeBall(ball) {
+      if (ball && ball.parentElement) {
+        ball.remove();
+        const idx = balls.indexOf(ball);
+        if (idx >= 0) balls.splice(idx, 1);
+      }
+    }
+
+    function startGame() {
+      startScreen.style.display = 'none';
+      gameRunning = true;
+      score = 0;
+      scoreEl.textContent = score;
+      balls.length = 0;
+
+      const oldBalls = gameArea.querySelectorAll('.ball');
+      oldBalls.forEach(b => b.remove());
+
+      spawnInterval = setInterval(() => {
+        if (gameRunning) createBall();
+      }, 600);
+    }
+
+    startBtn.addEventListener('click', startGame);
+
+    // Регистрация Service Worker
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js')
+          .then(reg => console.log('SW registered:', reg.scope))
+          .catch(err => console.error('SW registration failed:', err));
+      });
+    }
+  </script>
+</body>
+</html>
