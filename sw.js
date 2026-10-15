@@ -1,8 +1,25 @@
-const CACHE_NAME = 'shariki-v3';
-const ASSETS = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png'];
+const CACHE_NAME = 'shariki-v4';
+const ASSETS = [
+  './',
+  'index.html',
+  'manifest.json',
+  'icon-192.png',
+  'icon-512.png'
+];
 
 self.addEventListener('install', event => {
-  event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(ASSETS)).then(() => self.skipWaiting()));
+  event.waitUntil(
+    caches.open(CACHE_NAME).then(async cache => {
+      // Кэшируем файлы по одному, чтобы падающий запрос не ломал всё
+      for (const asset of ASSETS) {
+        try {
+          await cache.add(asset);
+        } catch (err) {
+          console.warn('Не удалось закэшировать ресурс:', asset, err);
+        }
+      }
+    }).then(() => self.skipWaiting())
+  );
 });
 
 self.addEventListener('activate', event => {
